@@ -1,8 +1,10 @@
 package com.example.demo.service;
 
 import com.example.demo.entity.Product;
+import com.example.demo.repository.CartItemRepository;
 import com.example.demo.repository.ProductRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Sort;
 import java.util.List;
 import java.util.Optional;
@@ -11,28 +13,36 @@ import java.util.Optional;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final CartItemRepository cartItemRepository;
 
-    public ProductService(ProductRepository productRepository) {
+    public ProductService(ProductRepository productRepository,
+            CartItemRepository cartItemRepository) {
         this.productRepository = productRepository;
+        this.cartItemRepository = cartItemRepository;
     }
 
-    // ✅ Lấy tất cả products
     public List<Product> findAll() {
         return productRepository.findAll();
     }
 
-    // ✅ Lấy product theo ID
+    public List<Product> findAll(Sort sort) {
+        return productRepository.findAll(sort);
+    }
+
     public Optional<Product> findById(Long id) {
         return productRepository.findById(id);
     }
 
-    // ✅ Tạo hoặc cập nhật product
     public Product save(Product product) {
         return productRepository.save(product);
     }
 
-    // ✅ Xóa product theo ID
+    @Transactional
     public void deleteById(Long id) {
+        // Xóa cart items trước
+        cartItemRepository.deleteByProductId(id);
+
+        // Sau đó xóa product
         productRepository.deleteById(id);
     }
 
@@ -43,7 +53,6 @@ public class ProductService {
     public List<Product> findProductsByCategoryAndMinPrice(
             Long categoryId,
             double price) {
-
         return productRepository
                 .findProductsByCategoryAndMinPrice(categoryId, price);
     }
@@ -52,8 +61,22 @@ public class ProductService {
         return productRepository.findByNameContaining(keyword);
     }
 
-    public List<Product> findAll(Sort sort) {
-        return productRepository.findAll(sort);
-    }
+    public Product update(Long id, Product request) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
 
+        product.setName(request.getName());
+        product.setPrice(request.getPrice());
+        product.setQuantity(request.getQuantity());
+        product.setImage(request.getImage());
+        product.setDescription(request.getDescription());
+
+        if (request.getCategory() != null && request.getCategory().getId() != null) {
+            product.setCategory(
+                    new com.example.demo.entity.Category(
+                            request.getCategory().getId()));
+        }
+
+        return productRepository.save(product);
+    }
 }

@@ -38,32 +38,29 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
 
+                        // Preflight
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // PUBLIC
-                        .requestMatchers(
-                                "/api/auth/**",
-                                "/api/products/**",
-                                "/api/categories/**",
-                                "/api/inventory/**")
-                        .permitAll()
+                        // ===== PUBLIC =====
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/categories/**").permitAll()
 
-                        // 🔥 ADMIN - hasRole() tự động thêm ROLE_ prefix khi check
-                        .requestMatchers("/api/orders/admin/**")
-                        .hasRole("ADMIN")
+                        // 🔓 PUBLIC – chỉ GET product
+                        .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
 
-                        // 🔥 USER - hasRole() tự động thêm ROLE_ prefix khi check
-                        .requestMatchers(HttpMethod.POST, "/api/orders")
-                        .hasRole("USER")
+                        // 🔐 PRODUCT – phải login (quyền check ở Controller)
+                        .requestMatchers("/api/products/**").authenticated()
 
-                        .requestMatchers(HttpMethod.GET, "/api/orders/my-orders")
-                        .hasRole("USER")
+                        // 🔐 ADMIN – orders
+                        .requestMatchers("/api/orders/admin/**").hasRole("ADMIN")
 
-                        // OTHERS
+                        // 🔐 USER
+                        .requestMatchers(HttpMethod.POST, "/api/orders").hasRole("USER")
+                        .requestMatchers(HttpMethod.GET, "/api/orders/my-orders").hasRole("USER")
+
                         .anyRequest().authenticated())
 
-                .addFilterBefore(
-                        jwtAuthenticationFilter,
+                .addFilterBefore(jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

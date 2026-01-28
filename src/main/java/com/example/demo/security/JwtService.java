@@ -25,7 +25,7 @@ public class JwtService {
                         "roles",
                         userDetails.getAuthorities()
                                 .stream()
-                                .map(a -> a.getAuthority())
+                                .map(a -> a.getAuthority().replace("ROLE_", ""))
                                 .toList())
                 .setIssuedAt(new Date())
                 .setExpiration(

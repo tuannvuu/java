@@ -66,7 +66,7 @@ public class ProductController {
 
     // ✅ Chỉ ADMIN mới xóa được
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')") // ✅ ĐÚNG
     public void deleteProduct(@PathVariable Long id) {
         productService.deleteById(id);
     }
@@ -91,5 +91,13 @@ public class ProductController {
             @RequestParam String keyword) {
 
         return productService.searchByName(keyword);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Product updateProduct(
+            @PathVariable Long id,
+            @RequestBody Product request) {
+        return productService.update(id, request);
     }
 }

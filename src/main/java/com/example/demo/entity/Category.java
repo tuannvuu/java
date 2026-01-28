@@ -17,7 +17,16 @@ public class Category {
     @OneToMany(mappedBy = "category")
     private List<Product> products;
 
-    // Getters and Setters
+    // ✅ BẮT BUỘC CHO JPA
+    public Category() {
+    }
+
+    // ✅ DÙNG KHI GÁN FK (ProductService.update)
+    public Category(Long id) {
+        this.id = id;
+    }
+
+    // ===== GETTERS / SETTERS =====
     public Long getId() {
         return id;
     }
