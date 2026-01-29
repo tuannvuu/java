@@ -20,7 +20,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 @Configuration
-@EnableMethodSecurity(prePostEnabled = true)
+@EnableMethodSecurity(prePostEnabled = false)
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -35,33 +35,52 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-
                         // Preflight
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // ===== PUBLIC =====
+                        // PUBLIC
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/categories/**").permitAll()
 
-                        // 🔓 PUBLIC – chỉ GET product
+                        // PRODUCTS - 🔥 THÊM "ROLE_" PREFIX
                         .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/products/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/products/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasAuthority("ROLE_ADMIN")
 
-                        // 🔐 PRODUCT – phải login (quyền check ở Controller)
-                        .requestMatchers("/api/products/**").authenticated()
+                        // ORDERS - 🔥 THÊM "ROLE_" PREFIX
+                        .requestMatchers("/api/orders/admin/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/orders").hasAuthority("ROLE_USER")
+                        .requestMatchers(HttpMethod.GET, "/api/orders/my-orders").hasAuthority("ROLE_USER")
 
-                        // 🔐 ADMIN – orders
-                        .requestMatchers("/api/orders/admin/**").hasRole("ADMIN")
+                        // AI CHAT
+                        .requestMatchers(HttpMethod.POST, "/api/ai/chat")
+                        .access((authentication, context) -> {
+                            System.out.println("=== [SECURITY] CHECKING /api/ai/chat ===");
 
-                        // 🔐 USER
-                        .requestMatchers(HttpMethod.POST, "/api/orders").hasRole("USER")
-                        .requestMatchers(HttpMethod.GET, "/api/orders/my-orders").hasRole("USER")
+                            var currentAuth = authentication.get();
+                            System.out.println("[SECURITY] Authentication exists: " + (currentAuth != null));
 
-                        .anyRequest().authenticated())
+                            if (currentAuth != null) {
+                                System.out.println("[SECURITY] Is Authenticated: " + currentAuth.isAuthenticated());
+                                System.out.println("[SECURITY] Principal: " + currentAuth.getPrincipal());
+                                System.out.println("[SECURITY] Authorities: " + currentAuth.getAuthorities());
 
-                .addFilterBefore(jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class);
+                                boolean hasRole = currentAuth.getAuthorities().stream()
+                                        .anyMatch(a -> a.getAuthority().equals("ROLE_USER"));
+                                System.out.println("[SECURITY] Has ROLE_USER: " + hasRole);
+
+                                System.out.println("[SECURITY] Decision: " + currentAuth.isAuthenticated());
+                            }
+
+                            return new org.springframework.security.authorization.AuthorizationDecision(
+                                    currentAuth != null && currentAuth.isAuthenticated());
+                        })
+
+                        .anyRequest().authenticated());
 
         return http.build();
     }

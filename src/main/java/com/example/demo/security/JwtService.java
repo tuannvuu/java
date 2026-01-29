@@ -25,7 +25,10 @@ public class JwtService {
                         "roles",
                         userDetails.getAuthorities()
                                 .stream()
-                                .map(a -> a.getAuthority().replace("ROLE_", ""))
+                                .map(a -> {
+                                    String role = a.getAuthority();
+                                    return role.startsWith("ROLE_") ? role : "ROLE_" + role; // THÊM prefix
+                                })
                                 .toList())
                 .setIssuedAt(new Date())
                 .setExpiration(

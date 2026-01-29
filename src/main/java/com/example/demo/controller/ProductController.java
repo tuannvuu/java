@@ -3,7 +3,7 @@ package com.example.demo.controller;
 import com.example.demo.entity.Product;
 import com.example.demo.service.ProductService;
 import org.springframework.hateoas.EntityModel;
-import org.springframework.security.access.prepost.PreAuthorize;
+//import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Sort;
 import java.util.List;
@@ -59,14 +59,14 @@ public class ProductController {
 
     // ✅ Chỉ ADMIN mới tạo được
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    // @PreAuthorize("hasRole('ADMIN')")
     public Product createProduct(@RequestBody Product product) {
         return productService.save(product);
     }
 
     // ✅ Chỉ ADMIN mới xóa được
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')") // ✅ ĐÚNG
+    // @PreAuthorize("hasRole('ADMIN')") // ✅ ĐÚNG
     public void deleteProduct(@PathVariable Long id) {
         productService.deleteById(id);
     }
@@ -94,7 +94,7 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    // @PreAuthorize("hasRole('ADMIN')")
     public Product updateProduct(
             @PathVariable Long id,
             @RequestBody Product request) {

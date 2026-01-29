@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -31,30 +32,41 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         @Override
-        protected boolean shouldNotFilter(HttpServletRequest request) {
+        protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
                 String path = request.getRequestURI();
+                String method = request.getMethod();
 
-                return path.startsWith("/api/auth/")
-                                || (request.getMethod().equalsIgnoreCase("GET")
-                                                && path.startsWith("/api/products"))
-                                || request.getMethod().equalsIgnoreCase("OPTIONS");
+                // Auth public
+                if (path.startsWith("/api/auth/")) {
+                        return true;
+                }
+
+                // Preflight
+                if ("OPTIONS".equalsIgnoreCase(method)) {
+                        return true;
+                }
+
+                // Public GET products
+                if ("GET".equalsIgnoreCase(method) && path.startsWith("/api/products")) {
+                        return true;
+                }
+
+                return false;
         }
 
         @Override
         protected void doFilterInternal(
-                        HttpServletRequest request,
-                        HttpServletResponse response,
-                        FilterChain filterChain)
-                        throws ServletException, IOException {
+                        @NonNull HttpServletRequest request,
+                        @NonNull HttpServletResponse response,
+                        @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-                // 🔥 DEBUG: filter có chạy hay không
+                // 🔥 DEBUG
                 System.out.println("[JWT] FILTER HIT → "
                                 + request.getMethod() + " "
                                 + request.getRequestURI());
 
                 String authHeader = request.getHeader("Authorization");
 
-                // 🔎 DEBUG Authorization header
                 System.out.println("[JWT] Authorization header = " + authHeader);
 
                 if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -83,18 +95,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 System.out.println("[JWT] roles from token = " + roles);
 
                                 var authorities = roles.stream()
-                                                .map(role -> {
-                                                        if (role.startsWith("ROLE_")) {
-                                                                return new SimpleGrantedAuthority(role);
-                                                        }
-                                                        return new SimpleGrantedAuthority("ROLE_" + role);
-                                                })
+                                                .map(SimpleGrantedAuthority::new)
                                                 .collect(Collectors.toList());
 
-                                authorities.forEach(a -> System.out.println("[JWT] authority = " + a.getAuthority()));
+                                // 🔥 IN RA TỪNG AUTHORITY
+                                System.out.println("[JWT] authorities size = " + authorities.size());
+                                authorities.forEach(
+                                                auth -> System.out.println("[JWT] authority = " + auth.getAuthority()));
 
                                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                                                userDetails,
+                                                userDetails, // Hoặc userDetails.getUsername()
                                                 null,
                                                 authorities);
 
@@ -105,14 +115,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 SecurityContextHolder.getContext()
                                                 .setAuthentication(authentication);
 
-                                // ✅ DEBUG: authentication sau khi set
-                                System.out.println("[JWT] ✅ Authentication SET = "
-                                                + SecurityContextHolder.getContext().getAuthentication());
+                                // 🔥 IN RA CHI TIẾT AUTHENTICATION
+                                System.out.println("[JWT] ✅ Authentication SET");
+                                System.out.println("[JWT] Principal = " + authentication.getPrincipal());
+                                System.out.println("[JWT] Authorities = " + authentication.getAuthorities());
+                                System.out.println("[JWT] isAuthenticated = " + authentication.isAuthenticated());
+
                         } else {
                                 System.out.println("[JWT] ❌ TOKEN INVALID");
                         }
-                } else {
-                        System.out.println("[JWT] ❌ username null OR auth already exists");
                 }
 
                 filterChain.doFilter(request, response);
